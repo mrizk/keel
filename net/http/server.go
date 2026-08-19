@@ -45,11 +45,24 @@ func NewServer(l *zap.Logger, name, addr string, handler http.Handler, middlewar
 		// http.NewResponseController(w).SetWriteDeadline(time.Time{}).
 		WriteTimeout: 60 * time.Second,
 
-		// Must exceed every client's IdleConnTimeout so the client is always the
-		// side that closes an idle connection. Otherwise both expire together
-		// and the client hits a FIN mid-request, surfacing as intermittent EOF.
-		// Clients here use 30s (internal) and 60s (external).
-		IdleTimeout: 120 * time.Second,
+		// Must exceed the idle timeout of whatever is on the other side, so that
+		// side is always the one closing an idle connection. Otherwise both
+		// expire together and the peer is handed a socket this server is
+		// closing: intermittent EOF in-cluster, 502s behind a load balancer.
+		//
+		// 620s is Google's recommended backend value and clears every managed
+		// L7 we run behind: GCLB 600s (fixed), Azure App Gateway 240s public /
+		// 300s private, ingress-nginx 60s, ALB 60s. In-cluster clients close far
+		// sooner (IdleConnTimeout 30s internal, 60s external), so they remain
+		// the closing side too. An Envoy sidecar defaults to 1h and is the one
+		// peer this cannot outlast — it reconnects per request, so its worst
+		// case is a retry rather than a 502.
+		//
+		// The cost is idle connections living ~10 minutes: bounded here, since
+		// the peer is always an ingress pool or a known set of pods. Lower it if
+		// a pod is ever exposed by Service type=LoadBalancer or NodePort, where
+		// the far end is unbounded and untrusted.
+		IdleTimeout: 620 * time.Second,
 
 		MaxHeaderBytes: 1 << 20,
 		Protocols:      &proto,
