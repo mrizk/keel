@@ -7,7 +7,6 @@ import (
 	"github.com/foomo/keel/internal/runtimeutil"
 	foomosemconv "github.com/foomo/opentelemetry-go/semconv"
 	"github.com/grafana/pyroscope-go"
-	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
@@ -62,7 +61,7 @@ func (c Context) EndSpan(err error, opts ...trace.SpanEndOption) {
 	if sp.IsRecording() {
 		if err != nil {
 			sp.RecordError(err, trace.WithAttributes(semconv.CodeStacktrace(runtimeutil.StackTrace(3, 1))))
-			sp.SetStatus(codes.Error, errors.Cause(err).Error())
+			sp.SetStatus(codes.Error, rootCause(err).Error())
 		} else {
 			c.SetSpanStatusOK()
 		}
@@ -79,7 +78,7 @@ func (c Context) DeferEndSpan(err *error, opts ...trace.SpanEndOption) {
 	if sp.IsRecording() {
 		if e != nil {
 			sp.RecordError(e, trace.WithAttributes(CodeStacktrace(5, 2)))
-			sp.SetStatus(codes.Error, errors.Cause(e).Error())
+			sp.SetStatus(codes.Error, rootCause(e).Error())
 		} else {
 			c.SetSpanStatusOK()
 		}
@@ -128,7 +127,7 @@ func (c Context) RecordError(err error, kv ...attribute.KeyValue) {
 			trace.WithAttributes(kv...),
 			trace.WithAttributes(CodeStacktrace(5, 1)),
 		)
-		sp.SetStatus(codes.Error, errors.Cause(err).Error())
+		sp.SetStatus(codes.Error, rootCause(err).Error())
 	}
 }
 
@@ -210,4 +209,24 @@ func (c Context) startSpan(prefix string, skip int, opts ...trace.SpanStartOptio
 
 func (c Context) log(ctx context.Context, lvl zapcore.Level, msg string, skip int, kv ...attribute.KeyValue) {
 	Log(ctx, lvl, msg, skip+1, kv...)
+}
+
+const maxCauseDepth = 100
+
+func rootCause(err error) error {
+	type causer interface {
+		Cause() error
+	}
+	for range maxCauseDepth {
+		cause, ok := err.(causer)
+		if !ok {
+			return err
+		}
+		next := cause.Cause()
+		if next == nil {
+			return err
+		}
+		err = next
+	}
+	return err
 }
