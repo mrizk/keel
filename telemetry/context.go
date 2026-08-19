@@ -211,13 +211,20 @@ func (c Context) log(ctx context.Context, lvl zapcore.Level, msg string, skip in
 	Log(ctx, lvl, msg, skip+1, kv...)
 }
 
+// maxCauseDepth bounds rootCause so a cyclic Cause() chain cannot spin forever.
 const maxCauseDepth = 100
 
+// rootCause unwraps err to its root cause, in the manner of
+// github.com/pkg/errors.Cause, but terminates on self-referential or cyclic
+// chains instead of looping indefinitely.
+//
+// Unlike pkg/errors.Cause this never returns nil for a non-nil err, so callers
+// may safely call Error() on the result.
 func rootCause(err error) error {
 	type causer interface {
 		Cause() error
 	}
-	for range maxCauseDepth {
+	for i := 0; i < maxCauseDepth; i++ {
 		cause, ok := err.(causer)
 		if !ok {
 			return err
