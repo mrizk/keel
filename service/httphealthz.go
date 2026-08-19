@@ -8,7 +8,7 @@ import (
 	"github.com/foomo/keel/healthz"
 	"github.com/foomo/keel/interfaces"
 	"github.com/foomo/keel/log"
-	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.uber.org/zap"
 )
 

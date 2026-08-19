@@ -19,7 +19,7 @@ func TracerProvider() trace.TracerProvider {
 	return otel.GetTracerProvider()
 }
 
-// NewNoopTraceProvider creates and returns a no-op tracer provider, setting it as the global otel tracer provider.
+// NewNoopTraceProvider creates and returns a no-op tracer provider.
 func NewNoopTraceProvider() trace.TracerProvider {
 	return noop.NewTracerProvider()
 }

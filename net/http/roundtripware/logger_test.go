@@ -114,7 +114,7 @@ func TestLogger(t *testing.T) {
 			middlewares = append(middlewares, roundtripware.Logger(tt.loggerOpts...))
 
 			// create http client
-			client := keelhttp.NewHTTPClient(
+			client := keelhttp.NewInternalHTTPClient(
 				keelhttp.HTTPClientWithRoundTripware(l, middlewares...),
 			)
 

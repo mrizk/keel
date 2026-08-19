@@ -14,6 +14,7 @@ var (
 	DefaultHTTPReadmePath = "/readme"
 )
 
+// Deprecated: will be removed in upcoming releases
 func NewHTTPReadme(l *zap.Logger, name, addr, path string, readmers func() []interfaces.Readmer) *HTTP {
 	handler := http.NewServeMux()
 	handler.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
@@ -36,6 +37,7 @@ func NewHTTPReadme(l *zap.Logger, name, addr, path string, readmers func() []int
 	return NewHTTP(l, name, addr, handler)
 }
 
+// Deprecated: will be removed in upcoming releases
 func NewDefaultHTTPReadme(l *zap.Logger, readmers func() []interfaces.Readmer) *HTTP {
 	return NewHTTPReadme(
 		l,

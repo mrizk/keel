@@ -75,14 +75,19 @@ func NewOTLPHTTPLoggerProvider(ctx context.Context) (log.LoggerProvider, error) 
 	return newLoggerProvider(ctx, sdklog.NewBatchProcessor(exp))
 }
 
-// NewOTLPGRCPLoggerProvider creates a new OTLP gRPC-based logger provider using the provided context.
-func NewOTLPGRCPLoggerProvider(ctx context.Context) (log.LoggerProvider, error) {
+// NewOTLPGRPCLoggerProvider creates a new OTLP gRPC-based logger provider using the provided context.
+func NewOTLPGRPCLoggerProvider(ctx context.Context) (log.LoggerProvider, error) {
 	exp, err := otlploggrpc.New(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	return newLoggerProvider(ctx, sdklog.NewBatchProcessor(exp))
+}
+
+// Deprecated: use NewOTLPGRPCLoggerProvider (this was a misspelling).
+func NewOTLPGRCPLoggerProvider(ctx context.Context) (log.LoggerProvider, error) {
+	return NewOTLPGRPCLoggerProvider(ctx)
 }
 
 func newLoggerProvider(ctx context.Context, p sdklog.Processor) (log.LoggerProvider, error) {

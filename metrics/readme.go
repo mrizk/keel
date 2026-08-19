@@ -5,6 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// Deprecated: will be removed in upcoming releases
 func Readme() string {
 	md := markdown.Markdown{}
 

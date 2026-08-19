@@ -6,18 +6,19 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 )
 
-// ResourceEnvMap maps environment variables to semantic attributes.
+// envAttributes maps environment variables to semantic attributes.
 var envAttributes = map[attribute.Key][]string{
+	semconv.ServiceNamespaceKey:     {"OTEL_SERVICE_NAMESPACE"},
 	semconv.VCSRepositoryNameKey:    {"REPO_NAME", "REPOSITORY_NAME", "GIT_REPOSITORY_NAME", "GITHUB_REPOSITORY", "GITHUB_REPOSITORY_NAME", "GIT_OTEL_VCS_REPOSITORY_NAME"},
 	semconv.VCSRepositoryURLFullKey: {"REPO_URL", "REPOSITORY_URL", "GIT_REPOSITORY_URL", "OTEL_VCS_REPOSITORY_URL_FULL"},
 	semconv.VCSRefBaseNameKey:       {"OTEL_VCS_BASE_NAME"},
-	semconv.VCSRefBaseRevisionKey:   {"OTEL_VCS_BASE_REVSION"},
+	semconv.VCSRefBaseRevisionKey:   {"OTEL_VCS_BASE_REVISION"},
 	semconv.VCSRefBaseTypeKey:       {"OTEL_VCS_BASE_TYPE"},
 	semconv.VCSRefHeadNameKey:       {"GIT_BRANCH", "OTEL_VCS_HEAD_NAME"},
-	semconv.VCSRefHeadRevisionKey:   {"GIT_COMMIT", "GIT_COMMIT_HASH", "OTEL_VCS_HEAD_REVSION"},
+	semconv.VCSRefHeadRevisionKey:   {"GIT_COMMIT", "GIT_COMMIT_HASH", "OTEL_VCS_HEAD_REVISION"},
 	semconv.VCSRefHeadTypeKey:       {"GIT_TYPE", "OTEL_VCS_HEAD_TYPE"},
 	"vcs.repository.path":           {"REPO_PATH", "REPOSITORY_PATH", "GIT_REPOSITORY_PATH", "OTEL_VCS_ROOT_PATH"},
 }

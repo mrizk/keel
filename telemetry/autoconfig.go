@@ -94,7 +94,7 @@ func NewLoggerProviderFromEnv(ctx context.Context) (log.LoggerProvider, error) {
 	case exporterOTLP:
 		switch protocol := otlpProtocol("logs"); protocol {
 		case protocolGRPC:
-			return NewOTLPGRCPLoggerProvider(ctx)
+			return NewOTLPGRPCLoggerProvider(ctx)
 		case protocolHTTP:
 			return NewOTLPHTTPLoggerProvider(ctx)
 		default:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync/atomic"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/log"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	"go.uber.org/zap"
@@ -73,18 +74,18 @@ func (e *Exporter) export(r sdklog.Record) {
 		fields = append(fields, zap.String("spanId", r.SpanID().String()))
 	}
 
-	r.WalkAttributes(func(kv log.KeyValue) bool {
-		switch kv.Value.Kind() {
-		case log.KindBool:
-			fields = append(fields, zap.Bool(kv.Key, kv.Value.AsBool()))
-		case log.KindString:
-			fields = append(fields, zap.String(kv.Key, kv.Value.AsString()))
-		case log.KindFloat64:
-			fields = append(fields, zap.Float64(kv.Key, kv.Value.AsFloat64()))
-		case log.KindInt64:
-			fields = append(fields, zap.Int64(kv.Key, kv.Value.AsInt64()))
+	r.WalkAttributes(func(kv attribute.KeyValue) bool {
+		switch kv.Value.Type() {
+		case attribute.BOOL:
+			fields = append(fields, zap.Bool(string(kv.Key), kv.Value.AsBool()))
+		case attribute.STRING:
+			fields = append(fields, zap.String(string(kv.Key), kv.Value.AsString()))
+		case attribute.FLOAT64:
+			fields = append(fields, zap.Float64(string(kv.Key), kv.Value.AsFloat64()))
+		case attribute.INT64:
+			fields = append(fields, zap.Int64(string(kv.Key), kv.Value.AsInt64()))
 		default:
-			fields = append(fields, zap.Any(kv.Key, kv.Value))
+			fields = append(fields, zap.Any(string(kv.Key), kv.Value))
 		}
 
 		return true

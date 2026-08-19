@@ -221,7 +221,7 @@ func JobWithOTLPGRCPLogger(enabled bool) JobOption {
 		if config.GetBool(inst.Config(), "otel.enabled", enabled)() {
 			var err error
 
-			inst.loggerProvider, err = telemetry.NewOTLPGRCPLoggerProvider(inst.ctx)
+			inst.loggerProvider, err = telemetry.NewOTLPGRPCLoggerProvider(inst.ctx)
 			log.Must(inst.l, err, "failed to create otlp grpc logger provider")
 		}
 	}

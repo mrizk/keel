@@ -2,10 +2,13 @@ package telemetry
 
 import (
 	"context"
+	"path"
 
+	goruntime "github.com/foomo/go/runtime"
 	"github.com/foomo/keel/log"
 	foomosemconv "github.com/foomo/opentelemetry-go/semconv"
 	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -42,7 +45,13 @@ func Log(ctx context.Context, lvl zapcore.Level, msg string, skip int, kv ...att
 		)
 	}
 
-	attrs = append(attrs, CodeCaller(skip+1)...)
+	if fr := goruntime.CallFrame(skip + 1); !fr.Zero() {
+		attrs = append(attrs,
+			semconv.CodeFunctionName(fr.Short()),
+			semconv.CodeFilePath(path.Join(path.Base(path.Dir(fr.File)), path.Base(fr.File))),
+			semconv.CodeLineNumber(fr.Line),
+		)
+	}
 
 	zap.L().WithOptions(zap.WithCaller(false)).Log(lvl, msg, log.Attributes(attrs...)...)
 }

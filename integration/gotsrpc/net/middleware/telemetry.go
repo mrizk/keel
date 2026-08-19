@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/foomo/gotsrpc/v2"
 	"github.com/foomo/keel/env"
@@ -18,7 +17,9 @@ import (
 	"github.com/foomo/keel/telemetry"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.uber.org/zap"
 )
 
@@ -79,6 +80,8 @@ func TelemetryWithPayloadAttributeDisabled(v bool) TelemetryOption {
 }
 
 // Telemetry middleware
+//
+// Deprecated: use gotsrpc v3 as includes otel
 func Telemetry(opts ...TelemetryOption) keelhttp.Middleware {
 	options := DefaultTelemetryOptions()
 
@@ -92,6 +95,8 @@ func Telemetry(opts ...TelemetryOption) keelhttp.Middleware {
 }
 
 // TelemetryWithOptions middleware
+//
+// Deprecated: use gotsrpc v3 as includes otel
 func TelemetryWithOptions(opts TelemetryOptions) keelhttp.Middleware {
 	m, err := gotsrpcconv.NewExecutionDuration(
 		opts.meter,
@@ -128,54 +133,48 @@ func TelemetryWithOptions(opts TelemetryOptions) keelhttp.Middleware {
 	return func(l *zap.Logger, name string, next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			*r = *gotsrpc.RequestWithStatsContext(r)
+			sp := telemetry.SpanFromContext(r.Context())
 
-			ctx := telemetry.Ctx(r.Context())
-			ctx.AddSpanEvent("GOTSRCP Telemetry")
-
-			r = r.WithContext(ctx)
+			sp.AddEvent("GOTSRPC Telemetry")
 
 			next.ServeHTTP(w, r)
 
 			if stats, ok := gotsrpc.GetStatsForRequest(r); ok {
 				if !opts.PayloadAttributeDisabled {
-					ctx.SetSpanAttributes(keelsemconv.GoTSRPCPayload(sanitizePayload(r)))
-				}
-
-				var pkg string
-				if parts := strings.Split(stats.Package, "/"); len(parts) > 0 {
-					pkg = parts[len(parts)-1] + "."
+					sp.SetAttributes(keelsemconv.GoTSRPCPayload(sanitizePayload(r)))
 				}
 
 				// override span name
-				ctx.SetSpanName(fmt.Sprintf("GOTSRPC %s%s/%s", pkg, stats.Service, stats.Func))
+				sp.SetName(fmt.Sprintf("%s/%s", stats.Service, stats.Func))
 
 				// define default attributes
 				attrs := []attribute.KeyValue{
+					semconv.RPCSystemNameKey.String("gotsrpc"),
 					keelsemconv.GoTSRPCFunc(stats.Func),
 					keelsemconv.GoTSRPCService(stats.Service),
 					keelsemconv.GoTSRPCPackage(stats.Package),
 				}
 
 				// add trace attributes
-				ctx.SetSpanAttributes(append(attrs,
+				sp.SetAttributes(append(attrs,
 					keelsemconv.GoTSRPCMarshalling(stats.Marshalling.Milliseconds()),
 					keelsemconv.GoTSRPCUnmarshalling(stats.Unmarshalling.Milliseconds()),
 				)...)
 
 				if stats.ErrorCode != 0 {
-					ctx.SetSpanStatusError(stats.ErrorMessage)
-					ctx.SetSpanAttributes(keelsemconv.GoTSRPCErrorCode(stats.ErrorCode))
+					sp.SetStatus(codes.Error, stats.ErrorMessage)
+					sp.SetAttributes(keelsemconv.GoTSRPCErrorCode(stats.ErrorCode))
 				}
 
 				if stats.ErrorType != "" {
-					ctx.SetSpanAttributes(keelsemconv.GoTSRPCErrorType(stats.ErrorType))
+					sp.SetAttributes(keelsemconv.GoTSRPCErrorType(stats.ErrorType))
 				}
 
 				if stats.ErrorMessage != "" {
-					ctx.SetSpanAttributes(keelsemconv.GoTSRPCErrorMessage(stats.ErrorMessage))
+					sp.SetAttributes(keelsemconv.GoTSRPCErrorMessage(stats.ErrorMessage))
 				}
 
-				m.Record(ctx,
+				m.Record(r.Context(),
 					stats.Execution.Seconds(),
 					stats.Package,
 					stats.Service,

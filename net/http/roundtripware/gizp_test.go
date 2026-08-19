@@ -89,7 +89,7 @@ func TestGZip(t *testing.T) {
 			defer svr.Close()
 
 			// create http client
-			client := keelhttp.NewHTTPClient(
+			client := keelhttp.NewInternalHTTPClient(
 				keelhttp.HTTPClientWithRoundTripware(l,
 					roundtripware.GZip(),
 				),

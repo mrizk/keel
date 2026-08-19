@@ -127,7 +127,7 @@ func TestRequestID(t *testing.T) {
 			}))
 			defer svr.Close()
 
-			client := keelhttp.NewHTTPClient(
+			client := keelhttp.NewInternalHTTPClient(
 				keelhttp.HTTPClientWithRoundTripware(l,
 					roundtripware.RequestID(tt.requestIDOptions...),
 				),

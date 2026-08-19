@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/foomo/keel/telemetry"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/log"
 	"go.opentelemetry.io/otel/log/logtest"
 	"go.uber.org/zap"
@@ -51,7 +52,7 @@ func ExampleNewZapLoggerProvider() {
 	// Raw log record
 	record := log.Record{}
 	record.SetSeverity(log.SeverityInfo)
-	record.SetBody(log.StringValue("something really cool"))
+	record.SetBody(attribute.StringValue("something really cool"))
 
 	tl := telemetry.LoggerProvider().Logger(telemetry.Name)
 	tl.Emit(ctx, record)

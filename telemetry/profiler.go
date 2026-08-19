@@ -10,7 +10,7 @@ import (
 	otelpyroscope "github.com/grafana/otel-profiling-go"
 	"github.com/grafana/pyroscope-go"
 	"go.opentelemetry.io/otel"
-	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 )
 
 func NewProfiler(ctx context.Context) (*pyroscope.Profiler, error) {
@@ -74,7 +74,7 @@ func NewProfiler(ctx context.Context) (*pyroscope.Profiler, error) {
 			key = "service_git_ref"
 		case semconv.VCSRepositoryURLFullKey:
 			key = "service_repository"
-		case "vcs_repository_path":
+		case "vcs.repository.path":
 			key = "service_root_path"
 		default:
 			key = strings.ReplaceAll(string(attr.Key), ".", "_")
@@ -85,9 +85,8 @@ func NewProfiler(ctx context.Context) (*pyroscope.Profiler, error) {
 
 	p, err := pyroscope.Start(pyroscope.Config{
 		ApplicationName: name,
-		// Logger:          internalpyroscope.NewLogger(),
-		ProfileTypes: profileTypes,
-		Tags:         tags,
+		ProfileTypes:    profileTypes,
+		Tags:            tags,
 	})
 	if err != nil {
 		return nil, err

@@ -12,7 +12,7 @@ import (
 	"github.com/foomo/opentelemetry-go/semconv/natsconv"
 	"github.com/nats-io/nats.go"
 	"go.opentelemetry.io/otel/attribute"
-	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.41.0"
 	"go.uber.org/zap"
 )
 

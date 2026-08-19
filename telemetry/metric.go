@@ -1,36 +1,14 @@
 package telemetry
 
 import (
-	"context"
-
-	foomosemconv "github.com/foomo/opentelemetry-go/semconv"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/noop"
-	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
 )
 
-// NewIntHistogram creates and returns a Int64Histogram metric instrument with the specified name and optional settings.
-func NewIntHistogram(name string, opts ...any) metric.Int64Histogram {
-	var (
-		meterOptions  []metric.MeterOption
-		metricOptions []metric.Int64HistogramOption
-	)
-
-	for _, v := range opts {
-		switch t := v.(type) {
-		case metric.MeterOption:
-			meterOptions = append(meterOptions, t)
-		case metric.HistogramOption:
-			metricOptions = append(metricOptions, t)
-		case metric.Int64HistogramOption:
-			metricOptions = append(metricOptions, t)
-		default:
-			Ctx(context.TODO()).LogWarn("invalid Histogram option", foomosemconv.ReflectType(v))
-		}
-	}
-
-	m, err := Meter(meterOptions...).Int64Histogram(name, metricOptions...)
+// NewIntHistogram creates and returns a Int64Histogram metric instrument with the specified name and options.
+func NewIntHistogram(name string, opts ...metric.Int64HistogramOption) metric.Int64Histogram {
+	m, err := Meter().Int64Histogram(name, opts...)
 	if err != nil {
 		otel.Handle(err)
 		return noop.Int64Histogram{}
@@ -39,27 +17,9 @@ func NewIntHistogram(name string, opts ...any) metric.Int64Histogram {
 	return m
 }
 
-// NewFloatHistogram creates and returns a Float64Histogram metric instrument with the specified name and optional settings.
-func NewFloatHistogram(name string, opts ...any) metric.Float64Histogram {
-	var (
-		meterOptions  []metric.MeterOption
-		metricOptions []metric.Float64HistogramOption
-	)
-
-	for _, v := range opts {
-		switch t := v.(type) {
-		case metric.MeterOption:
-			meterOptions = append(meterOptions, t)
-		case metric.HistogramOption:
-			metricOptions = append(metricOptions, t)
-		case metric.Float64HistogramOption:
-			metricOptions = append(metricOptions, t)
-		default:
-			Ctx(context.TODO()).LogWarn("invalid Histogram option", foomosemconv.ReflectType(v))
-		}
-	}
-
-	m, err := Meter(meterOptions...).Float64Histogram(name, metricOptions...)
+// NewFloatHistogram creates and returns a Float64Histogram metric instrument with the specified name and options.
+func NewFloatHistogram(name string, opts ...metric.Float64HistogramOption) metric.Float64Histogram {
+	m, err := Meter().Float64Histogram(name, opts...)
 	if err != nil {
 		otel.Handle(err)
 		return noop.Float64Histogram{}
@@ -68,162 +28,66 @@ func NewFloatHistogram(name string, opts ...any) metric.Float64Histogram {
 	return m
 }
 
-// NewIntGauge creates and returns a Int64Gauge metric instrument with the specified name and optional settings.
-func NewIntGauge(name string, opts ...any) metric.Int64Gauge {
-	var (
-		meterOptions  []metric.MeterOption
-		metricOptions []metric.Int64GaugeOption
-	)
-
-	for _, v := range opts {
-		switch t := v.(type) {
-		case metric.MeterOption:
-			meterOptions = append(meterOptions, t)
-		case metric.Int64GaugeOption:
-			metricOptions = append(metricOptions, t)
-		default:
-			Ctx(context.TODO()).LogWarn("invalid Gauge option", foomosemconv.ReflectType(v))
-		}
-	}
-
-	m, err := Meter(meterOptions...).Int64Gauge(name, metricOptions...)
+// NewIntGauge creates and returns a Int64Gauge metric instrument with the specified name and options.
+func NewIntGauge(name string, opts ...metric.Int64GaugeOption) metric.Int64Gauge {
+	m, err := Meter().Int64Gauge(name, opts...)
 	if err != nil {
-		Ctx(context.TODO()).LogWarn("failed to create Gauge", semconv.ErrorType(err), semconv.ExceptionMessage(err.Error()))
+		otel.Handle(err)
 		return noop.Int64Gauge{}
 	}
 
 	return m
 }
 
-// NewFloatGauge creates and returns a Float64Gauge metric with the specified name and optional configurations.
-func NewFloatGauge(name string, opts ...any) metric.Float64Gauge {
-	var (
-		meterOptions  []metric.MeterOption
-		metricOptions []metric.Float64GaugeOption
-	)
-
-	for _, v := range opts {
-		switch t := v.(type) {
-		case metric.MeterOption:
-			meterOptions = append(meterOptions, t)
-		case metric.Float64GaugeOption:
-			metricOptions = append(metricOptions, t)
-		default:
-			Ctx(context.TODO()).LogWarn("invalid Gauge option", foomosemconv.ReflectType(v))
-		}
-	}
-
-	m, err := Meter(meterOptions...).Float64Gauge(name, metricOptions...)
+// NewFloatGauge creates and returns a Float64Gauge metric instrument with the specified name and options.
+func NewFloatGauge(name string, opts ...metric.Float64GaugeOption) metric.Float64Gauge {
+	m, err := Meter().Float64Gauge(name, opts...)
 	if err != nil {
-		Ctx(context.TODO()).LogWarn("failed to create Gauge", semconv.ErrorType(err), semconv.ExceptionMessage(err.Error()))
+		otel.Handle(err)
 		return noop.Float64Gauge{}
 	}
 
 	return m
 }
 
-// NewIntCounter creates and returns a Int64Counter metric instrument with the specified name and optional settings.
-func NewIntCounter(name string, opts ...any) metric.Int64Counter {
-	var (
-		meterOptions  []metric.MeterOption
-		metricOptions []metric.Int64CounterOption
-	)
-
-	for _, v := range opts {
-		switch t := v.(type) {
-		case metric.MeterOption:
-			meterOptions = append(meterOptions, t)
-		case metric.Int64CounterOption:
-			metricOptions = append(metricOptions, t)
-		default:
-			Ctx(context.TODO()).LogWarn("invalid Counter option", foomosemconv.ReflectType(v))
-		}
-	}
-
-	m, err := Meter(meterOptions...).Int64Counter(name, metricOptions...)
+// NewIntCounter creates and returns a Int64Counter metric instrument with the specified name and options.
+func NewIntCounter(name string, opts ...metric.Int64CounterOption) metric.Int64Counter {
+	m, err := Meter().Int64Counter(name, opts...)
 	if err != nil {
-		Ctx(context.TODO()).LogWarn("failed to create Counter", semconv.ErrorType(err), semconv.ExceptionMessage(err.Error()))
+		otel.Handle(err)
 		return noop.Int64Counter{}
 	}
 
 	return m
 }
 
-// NewFloatCounter creates and returns a Float64Counter metric instrument with the specified name and optional settings.
-func NewFloatCounter(name string, opts ...any) metric.Float64Counter {
-	var (
-		meterOptions  []metric.MeterOption
-		metricOptions []metric.Float64CounterOption
-	)
-
-	for _, v := range opts {
-		switch t := v.(type) {
-		case metric.MeterOption:
-			meterOptions = append(meterOptions, t)
-		case metric.Float64CounterOption:
-			metricOptions = append(metricOptions, t)
-		default:
-			Ctx(context.TODO()).LogWarn("invalid Counter option", foomosemconv.ReflectType(v))
-		}
-	}
-
-	m, err := Meter(meterOptions...).Float64Counter(name, metricOptions...)
+// NewFloatCounter creates and returns a Float64Counter metric instrument with the specified name and options.
+func NewFloatCounter(name string, opts ...metric.Float64CounterOption) metric.Float64Counter {
+	m, err := Meter().Float64Counter(name, opts...)
 	if err != nil {
-		Ctx(context.TODO()).LogWarn("failed to create Counter", semconv.ErrorType(err), semconv.ExceptionMessage(err.Error()))
+		otel.Handle(err)
 		return noop.Float64Counter{}
 	}
 
 	return m
 }
 
-// NewIntUpDownCounter creates and returns a Int64UpDownCounter metric instrument with the specified name and optional settings.
-func NewIntUpDownCounter(name string, opts ...any) metric.Int64UpDownCounter {
-	var (
-		meterOptions  []metric.MeterOption
-		metricOptions []metric.Int64UpDownCounterOption
-	)
-
-	for _, v := range opts {
-		switch t := v.(type) {
-		case metric.MeterOption:
-			meterOptions = append(meterOptions, t)
-		case metric.Int64UpDownCounterOption:
-			metricOptions = append(metricOptions, t)
-		default:
-			Ctx(context.TODO()).LogWarn("invalid UpDownCounter option", foomosemconv.ReflectType(v))
-		}
-	}
-
-	m, err := Meter(meterOptions...).Int64UpDownCounter(name, metricOptions...)
+// NewIntUpDownCounter creates and returns a Int64UpDownCounter metric instrument with the specified name and options.
+func NewIntUpDownCounter(name string, opts ...metric.Int64UpDownCounterOption) metric.Int64UpDownCounter {
+	m, err := Meter().Int64UpDownCounter(name, opts...)
 	if err != nil {
-		Ctx(context.TODO()).LogWarn("failed to create UpDownCounter", semconv.ErrorType(err), semconv.ExceptionMessage(err.Error()))
+		otel.Handle(err)
 		return noop.Int64UpDownCounter{}
 	}
 
 	return m
 }
 
-// NewFloatUpDownCounter creates and returns a Float64UpDownCounter metric instrument with the specified name and optional settings.
-func NewFloatUpDownCounter(name string, opts ...any) metric.Float64UpDownCounter {
-	var (
-		meterOptions  []metric.MeterOption
-		metricOptions []metric.Float64UpDownCounterOption
-	)
-
-	for _, v := range opts {
-		switch t := v.(type) {
-		case metric.MeterOption:
-			meterOptions = append(meterOptions, t)
-		case metric.Float64UpDownCounterOption:
-			metricOptions = append(metricOptions, t)
-		default:
-			Ctx(context.TODO()).LogWarn("invalid UpDownCounter option", foomosemconv.ReflectType(v))
-		}
-	}
-
-	m, err := Meter(meterOptions...).Float64UpDownCounter(name, metricOptions...)
+// NewFloatUpDownCounter creates and returns a Float64UpDownCounter metric instrument with the specified name and options.
+func NewFloatUpDownCounter(name string, opts ...metric.Float64UpDownCounterOption) metric.Float64UpDownCounter {
+	m, err := Meter().Float64UpDownCounter(name, opts...)
 	if err != nil {
-		Ctx(context.TODO()).LogWarn("failed to create UpDownCounter", semconv.ErrorType(err), semconv.ExceptionMessage(err.Error()))
+		otel.Handle(err)
 		return noop.Float64UpDownCounter{}
 	}
 

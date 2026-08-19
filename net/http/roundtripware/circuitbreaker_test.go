@@ -64,7 +64,7 @@ func TestCircuitBreaker(t *testing.T) {
 	defer svr.Close()
 
 	// create http client
-	client := keelhttp.NewHTTPClient(
+	client := keelhttp.NewInternalHTTPClient(
 		keelhttp.HTTPClientWithRoundTripware(l,
 			roundtripware.CircuitBreaker(cbSettings,
 				roundtripware.CircuitBreakerWithIsSuccessful(
@@ -81,7 +81,7 @@ func TestCircuitBreaker(t *testing.T) {
 	)
 
 	{
-		client := keelhttp.NewHTTPClient(
+		client := keelhttp.NewInternalHTTPClient(
 			keelhttp.HTTPClientWithRoundTripware(l,
 				roundtripware.CircuitBreaker(
 					&roundtripware.CircuitBreakerSettings{
@@ -159,7 +159,7 @@ func TestCircuitBreakerCopyBodies(t *testing.T) {
 	defer svr.Close()
 
 	// create http client
-	client := keelhttp.NewHTTPClient(
+	client := keelhttp.NewInternalHTTPClient(
 		keelhttp.HTTPClientWithRoundTripware(l,
 			roundtripware.CircuitBreaker(cbSettings,
 				roundtripware.CircuitBreakerWithIsSuccessful(
@@ -217,7 +217,7 @@ func TestCircuitBreakerReadFromNotCopiedBodies(t *testing.T) {
 	defer svr.Close()
 
 	// create http client
-	client := keelhttp.NewHTTPClient(
+	client := keelhttp.NewInternalHTTPClient(
 		keelhttp.HTTPClientWithRoundTripware(l,
 			roundtripware.CircuitBreaker(cbSettings,
 				roundtripware.CircuitBreakerWithIsSuccessful(
@@ -248,7 +248,7 @@ func TestCircuitBreakerReadFromNotCopiedBodies(t *testing.T) {
 	require.ErrorIs(t, err, roundtripware.ErrReadFromActualBody)
 
 	// same thing for the response
-	client = keelhttp.NewHTTPClient(
+	client = keelhttp.NewInternalHTTPClient(
 		keelhttp.HTTPClientWithRoundTripware(l,
 			roundtripware.CircuitBreaker(cbSettings,
 				roundtripware.CircuitBreakerWithIsSuccessful(
@@ -293,7 +293,7 @@ func TestCircuitBreakerInterval(t *testing.T) {
 	defer svr.Close()
 
 	// create http client
-	client := keelhttp.NewHTTPClient(
+	client := keelhttp.NewInternalHTTPClient(
 		keelhttp.HTTPClientWithRoundTripware(l,
 			roundtripware.CircuitBreaker(&roundtripware.CircuitBreakerSettings{
 				Name:        cbSettings.Name,
@@ -373,7 +373,7 @@ func TestCircuitBreakerIgnore(t *testing.T) {
 	defer svr.Close()
 
 	// create http client
-	client := keelhttp.NewHTTPClient(
+	client := keelhttp.NewInternalHTTPClient(
 		keelhttp.HTTPClientWithRoundTripware(l,
 			roundtripware.CircuitBreaker(cbSettings,
 				roundtripware.CircuitBreakerWithIsSuccessful(
@@ -423,7 +423,7 @@ func TestCircuitBreakerTimeout(t *testing.T) {
 	defer svr.Close()
 
 	// create http client
-	client := keelhttp.NewHTTPClient(
+	client := keelhttp.NewInternalHTTPClient(
 		keelhttp.HTTPClientWithRoundTripware(l,
 			roundtripware.CircuitBreaker(cbSettings),
 		),

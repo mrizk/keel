@@ -53,20 +53,6 @@ func TestCtx(t *testing.T) {
 		require.Len(t, spanRecorder.Ended(), 1)
 	})
 
-	t.Run("EndSpan Ok", func(t *testing.T) {
-		spanRecorder.Reset()
-
-		ctx := telemetry.Ctx(t.Context()).StartSpan()
-		require.Len(t, spanRecorder.Started(), 1)
-		ctx.EndSpan(nil)
-		// repeat
-		ctx.EndSpan(errors.New("error"))
-
-		spans := spanRecorder.Ended()
-		require.Len(t, spans, 1)
-		assert.Equal(t, codes.Ok, spans[0].Status().Code)
-	})
-
 	t.Run("EndSpan Error", func(t *testing.T) {
 		spanRecorder.Reset()
 

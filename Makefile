@@ -88,7 +88,6 @@ test.bench:
 ## Run security audit
 audit:
 	@echo "〉security audit"
-	@go install golang.org/x/vuln/cmd/govulncheck@latest
 	@$(foreach mod,$(GOMODS), (cd $(dir $(mod)) && echo "📂 $(dir $(mod))" && govulncheck ./...) &&) true
 
 ### Dependencies
@@ -101,17 +100,16 @@ tidy:
 	@go work use -r . && go work sync
 
 .PHONY: outdated
-## Show outdated direct dependencies in all go.mod files
+## Show outdated direct dependencies
 outdated:
 	@echo "〉go mod outdated"
-	@$(foreach mod,$(GOMODS), (cd $(dir $(mod)) && echo "📂 $(dir $(mod))" && go mod tidy && go list -u -m -json all | go-mod-outdated -update -direct) &&) true
+	@$(foreach mod,$(GOMODS),(cd $(dir $(mod)) && echo "📂 $(dir $(mod))" && GOWORK=off go-mod-upgrade --list) &&) true
 
 .PHONY: upgrade
-## Upgrade direct dependencies in all go.mod files
+## Upgrade direct dependencies
 upgrade:
 	@echo "〉go mod upgrade"
-	@rm -f go.work go.work.sum
-	@$(foreach mod,$(GOMODS), (cd $(dir $(mod)) && echo "📂 $(dir $(mod))" && go mod tidy && deps=$$(go list -u -m -f '{{if and (not .Main) (not .Indirect) .Update}}{{.Path}}{{end}}' all); [ -z "$$deps" ] || for dep in $$deps; do go get "$$dep@latest"; done; go mod tidy) &&) true
+	@$(foreach mod,$(GOMODS),(cd $(dir $(mod)) && echo "📂 $(dir $(mod))" && GOWORK=off go-mod-upgrade }) &&) true
 	@$(MAKE) tidy
 
 ### Release
@@ -154,7 +152,7 @@ actionlint:
 	@actionlint
 
 .PHONY: help
-# https://patorjk.com/software/taag/#p=display&f=Tmplr&t=keel&x=none&v=4&h=4&w=80&we=false
+# https://patorjk.com/software/taag/#p=display&f=Future+Smooth&t=keel&x=none&v=4&h=4&w=80&we=false
 ## Show help text
 help: g=\033[0;32m
 help: b=\033[0;34m
@@ -162,9 +160,9 @@ help: w=\033[0;90m
 help: e=\033[0m
 help:
 	@echo "$(g)"
-	@echo "┓     ┓"
-	@echo "┃┏┏┓┏┓┃"
-	@echo "┛┗┗ ┗ ┗"
+	@echo "╷╭ ╭─╴╭─╴╷"
+	@echo "├┴╮├╴ ├╴ │"
+	@echo "╵ ╵╰─╴╰─╴╰─╴"
 	@echo "with ❤ foomo by bestbytes"
 	@echo "$(e)"
 	@echo "$(b)Usage:$(e)\n  make [task]"

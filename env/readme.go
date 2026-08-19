@@ -6,6 +6,7 @@ import (
 	"github.com/foomo/keel/markdown"
 )
 
+// Deprecated: will be removed in future releases
 func Readme() string {
 	var rows [][]string
 

@@ -42,7 +42,7 @@ type (
 		*options.CollectionOptionsBuilder
 		*options.CreateIndexesOptionsBuilder
 		Indexes        []mongo.IndexModel
-		IndexesContext context.Context
+		IndexesMaxTime time.Duration
 	}
 	CollectionOption func(*CollectionOptions)
 )
@@ -55,7 +55,6 @@ func DefaultCollectionOptions() CollectionOptions {
 	return CollectionOptions{
 		CollectionOptionsBuilder:    options.Collection(),
 		CreateIndexesOptionsBuilder: options.CreateIndexes(),
-		IndexesContext:              context.Background(),
 	}
 }
 
@@ -89,30 +88,31 @@ func CollectionWithIndexes(v ...mongo.IndexModel) CollectionOption {
 	}
 }
 
-// Deprecated: MaxTime has been removed in mongo-driver v2. Use context timeout instead.
-func CollectionWithIndexesMaxTime(_ time.Duration) CollectionOption {
-	return func(_ *CollectionOptions) {}
+func CollectionWithIndexesMaxTime(v time.Duration) CollectionOption {
+	return func(o *CollectionOptions) {
+		o.IndexesMaxTime = v
+	}
 }
 
-func CollectionWithIndexesContext(v int32) CollectionOption {
+func CollectionWithCommitQuorumInt(v int32) CollectionOption {
 	return func(o *CollectionOptions) {
 		o.SetCommitQuorumInt(v)
 	}
 }
 
-func CollectionWithIndexesQuorumMajority() CollectionOption {
+func CollectionWithCommitQuorumMajority() CollectionOption {
 	return func(o *CollectionOptions) {
 		o.SetCommitQuorumMajority()
 	}
 }
 
-func CollectionWithIndexesCommitQuorumString(v string) CollectionOption {
+func CollectionWithCommitQuorumString(v string) CollectionOption {
 	return func(o *CollectionOptions) {
 		o.SetCommitQuorumString(v)
 	}
 }
 
-func CollectionWithIndexesCommitQuorumVotingMembers(v context.Context) CollectionOption {
+func CollectionWithCommitQuorumVotingMembers(v context.Context) CollectionOption {
 	return func(o *CollectionOptions) {
 		o.SetCommitQuorumVotingMembers()
 	}
@@ -140,25 +140,38 @@ func NewCollection(db *mongo.Database, name string, opts ...CollectionOption) (*
 	}
 
 	if len(o.Indexes) > 0 {
-		if _, err := col.Indexes().CreateMany(o.IndexesContext, o.Indexes, o.CreateIndexesOptionsBuilder); err != nil {
-			return nil, err
-		}
+		if err := func(ctx context.Context) error {
+			if o.IndexesMaxTime > 0 {
+				var cancel context.CancelFunc
 
-		if _, ok := indices[db.Name()]; !ok {
-			indices[db.Name()] = map[string][]string{}
-		}
+				ctx, cancel = context.WithTimeout(ctx, o.IndexesMaxTime)
+				defer cancel()
+			}
 
-		for _, index := range o.Indexes {
-			if index.Options != nil {
-				var indexOpts options.IndexOptions
-				for _, set := range index.Options.Opts {
-					_ = set(&indexOpts)
-				}
+			if _, err := col.Indexes().CreateMany(ctx, o.Indexes, o.CreateIndexesOptionsBuilder); err != nil {
+				return err
+			}
 
-				if indexOpts.Name != nil {
-					indices[db.Name()][name] = append(indices[db.Name()][name], *indexOpts.Name)
+			if _, ok := indices[db.Name()]; !ok {
+				indices[db.Name()] = map[string][]string{}
+			}
+
+			for _, index := range o.Indexes {
+				if index.Options != nil {
+					var indexOpts options.IndexOptions
+					for _, set := range index.Options.Opts {
+						_ = set(&indexOpts)
+					}
+
+					if indexOpts.Name != nil {
+						indices[db.Name()][name] = append(indices[db.Name()][name], *indexOpts.Name)
+					}
 				}
 			}
+
+			return nil
+		}(context.Background()); err != nil {
+			return nil, err
 		}
 	}
 

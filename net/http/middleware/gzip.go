@@ -1,8 +1,10 @@
 package middleware
 
 import (
+	"bytes"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 
 	stdhttp "github.com/foomo/gostandards/http"
@@ -19,6 +21,9 @@ type (
 	GZipOptions struct {
 		CompressionLevel int
 		MinSize          int
+		// MaxDecompressedSize caps the number of decompressed request body bytes
+		// accepted (guards against decompression bombs). Zero means unlimited.
+		MaxDecompressedSize int64
 	}
 	GZipOption func(*GZipOptions)
 )
@@ -35,10 +40,18 @@ func GZipWithLevel(v int) GZipOption {
 	}
 }
 
-// GZipWithMinSize allows setting a minimum response body length to apply gzip compression (default: 1400 bytes).
+// GZipWithMinSize allows setting a minimum response body length to apply gzip compression (default: 1024 bytes).
 func GZipWithMinSize(v int) GZipOption {
 	return func(o *GZipOptions) {
 		o.MinSize = v
+	}
+}
+
+// GZipWithMaxDecompressedSize caps the decompressed request body size in bytes to guard
+// against decompression bombs. Requests exceeding the limit are rejected with 413 (default: 0, unlimited).
+func GZipWithMaxDecompressedSize(v int64) GZipOption {
+	return func(o *GZipOptions) {
+		o.MaxDecompressedSize = v
 	}
 }
 
@@ -78,7 +91,7 @@ func GZipWithOptions(opts GZipOptions) keelhttp.Middleware {
 				span.AddEvent("GZip")
 			}
 
-			if r.Header.Get(stdhttp.HeaderContentEncoding.String()) != stdhttp.EncodingGzip.String() {
+			if !strings.EqualFold(r.Header.Get(stdhttp.HeaderContentEncoding.String()), stdhttp.EncodingGzip.String()) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -94,20 +107,47 @@ func GZipWithOptions(opts GZipOptions) keelhttp.Middleware {
 			defer b.Close()
 
 			if err := gr.Reset(b); errors.Is(err, io.EOF) {
+				// empty body: nothing to decompress, but strip the now-inaccurate encoding headers
+				removeGZipRequestHeaders(r)
 				next.ServeHTTP(w, r)
+
 				return
 			} else if err != nil {
-				httputils.BadRequestServerError(l, w, r, errors.New("failed to reset gzip"))
+				httputils.BadRequestServerError(l, w, r, errors.Wrap(err, "failed to reset gzip"))
 				return
 			}
 
 			defer gr.Close()
 
-			r.Header.Del(stdhttp.HeaderContentEncoding.String())
+			removeGZipRequestHeaders(r)
 
-			r.Body = gr
+			if opts.MaxDecompressedSize > 0 {
+				// read one byte past the limit so we can detect an overrun; memory stays bounded
+				buf, err := io.ReadAll(io.LimitReader(gr, opts.MaxDecompressedSize+1))
+				if err != nil {
+					httputils.BadRequestServerError(l, w, r, errors.Wrap(err, "failed to read gzip body"))
+					return
+				}
+
+				if int64(len(buf)) > opts.MaxDecompressedSize {
+					httputils.RequestEntityTooLargeServerError(l, w, r, errors.New("gzip: decompressed size limit exceeded"))
+					return
+				}
+
+				r.Body = io.NopCloser(bytes.NewReader(buf))
+			} else {
+				r.Body = gr
+			}
 
 			next.ServeHTTP(w, r)
 		}))
 	}
+}
+
+// removeGZipRequestHeaders removes the request encoding/length headers that no longer describe
+// the decompressed body handed to downstream handlers.
+func removeGZipRequestHeaders(r *http.Request) {
+	r.Header.Del(stdhttp.HeaderContentEncoding.String())
+	r.Header.Del(stdhttp.HeaderContentLength.String())
+	r.ContentLength = -1
 }

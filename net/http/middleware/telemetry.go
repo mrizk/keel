@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/foomo/keel/log"
@@ -9,7 +8,6 @@ import (
 	httplog "github.com/foomo/keel/net/http/log"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -27,11 +25,6 @@ type (
 // GetDefaultTelemetryOptions returns the default options
 func GetDefaultTelemetryOptions() TelemetryOptions {
 	return TelemetryOptions{
-		OtelOpts: []otelhttp.Option{
-			otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
-				return fmt.Sprintf("HTTP %s %s", r.Method, operation)
-			}),
-		},
 		InjectPropagationHeader: true,
 	}
 }
@@ -83,13 +76,6 @@ func TelemetryWithOptions(opts TelemetryOptions) keelhttp.Middleware {
 
 			if opts.InjectPropagationHeader {
 				otel.GetTextMapPropagator().Inject(r.Context(), propagation.HeaderCarrier(w.Header()))
-			}
-
-			if labeler, ok := otelhttp.LabelerFromContext(r.Context()); ok {
-				labeler.Add(
-					// Deprecated: will be removed
-					attribute.String("http.server_name", name),
-				)
 			}
 
 			if labeler, ok := httplog.LabelerFromRequest(r); ok {

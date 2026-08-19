@@ -56,7 +56,7 @@ func NewGoRoutine(l *zap.Logger, name string, handler GoRoutineFn, opts ...GoRou
 // ~ Options
 // ------------------------------------------------------------------------------------------------
 
-func GoRoutineWithPralllel(v int) GoRoutineOption {
+func GoRoutineWithParallel(v int) GoRoutineOption {
 	return func(o *GoRoutine) {
 		o.parallel = v
 	}

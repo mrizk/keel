@@ -172,7 +172,7 @@ func WithOTLPGRCPLogger(enabled bool) Option {
 		if config.GetBool(inst.Config(), "otel.enabled", enabled)() {
 			var err error
 
-			inst.loggerProvider, err = telemetry.NewOTLPGRCPLoggerProvider(inst.ctx)
+			inst.loggerProvider, err = telemetry.NewOTLPGRPCLoggerProvider(inst.ctx)
 			log.Must(inst.l, err, "failed to create otlp grpc logger provider")
 		}
 	}
@@ -364,6 +364,8 @@ func WithHTTPHealthzService(enabled bool) Option {
 }
 
 // WithHTTPReadmeService option with default value
+//
+// Deprecated: will be removed in future releases
 func WithHTTPReadmeService(enabled bool) Option {
 	return func(inst *Server) {
 		if config.GetBool(inst.Config(), "service.readme.enabled", enabled)() {
@@ -374,7 +376,7 @@ func WithHTTPReadmeService(enabled bool) Option {
 	}
 }
 
-// WithInitService option with default value
+// WithInitService option with a default value
 func WithInitService(service Service) Option {
 	return func(inst *Server) {
 		if service == nil || slices.Contains(inst.initServices, service) {

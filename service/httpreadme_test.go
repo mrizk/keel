@@ -27,7 +27,7 @@ func _ExampleNewHTTPReadme() {
 	svr := keel.NewServer(
 		keel.WithLogger(zap.NewNop()),
 		keel.WithTelemetry(),
-		keel.WithHTTPReadmeService(true),
+		keel.WithHTTPReadmeService(true), //nolint:staticcheck
 		keel.WithGracefulPeriod(3*time.Second),
 	)
 

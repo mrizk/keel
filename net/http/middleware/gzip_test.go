@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/foomo/keel/net/http/middleware"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 const (
@@ -135,6 +137,124 @@ func TestGZipBadRequest(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	defer resp.Body.Close()
+}
+
+func TestGZipEmptyBody(t *testing.T) {
+	t.Parallel()
+
+	handler := middleware.GZip()(zap.NewNop(), "test", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// encoding/length headers must be stripped and length marked unknown
+		assert.Empty(t, r.Header.Get(stdhttp.HeaderContentEncoding.String()))
+		assert.Empty(t, r.Header.Get(stdhttp.HeaderContentLength.String()))
+		assert.Equal(t, int64(-1), r.ContentLength)
+
+		body, err := io.ReadAll(r.Body)
+		assert.NoError(t, err)
+		assert.Empty(t, body)
+	}))
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", http.NoBody)
+	r.Header.Set(stdhttp.HeaderContentEncoding.String(), stdhttp.EncodingGzip.String())
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestGZipContentLengthReset(t *testing.T) {
+	t.Parallel()
+
+	payload := strings.Repeat("A", 4096)
+	compressed, err := gzipString(payload)
+	require.NoError(t, err)
+
+	handler := middleware.GZip()(zap.NewNop(), "test", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// after decompression the compressed length no longer applies
+		assert.Empty(t, r.Header.Get(stdhttp.HeaderContentLength.String()))
+		assert.Equal(t, int64(-1), r.ContentLength)
+
+		body, readErr := io.ReadAll(r.Body)
+		assert.NoError(t, readErr)
+		assert.Equal(t, payload, string(body))
+	}))
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewReader(compressed))
+	r.Header.Set(stdhttp.HeaderContentEncoding.String(), stdhttp.EncodingGzip.String())
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestGZipCaseInsensitiveEncoding(t *testing.T) {
+	t.Parallel()
+
+	payload := strings.Repeat("A", 2048)
+	compressed, err := gzipString(payload)
+	require.NoError(t, err)
+
+	handler := middleware.GZip()(zap.NewNop(), "test", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, readErr := io.ReadAll(r.Body)
+		assert.NoError(t, readErr)
+		assert.Equal(t, payload, string(body))
+	}))
+
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewReader(compressed))
+	// upper-case content-coding token must still be decompressed
+	r.Header.Set(stdhttp.HeaderContentEncoding.String(), "GZIP")
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestGZipMaxDecompressedSize(t *testing.T) {
+	t.Parallel()
+
+	payload := strings.Repeat("A", 100*1024) // compresses tiny, expands to 100KB
+	compressed, err := gzipString(payload)
+	require.NoError(t, err)
+
+	newHandler := func(limit int64) http.Handler {
+		return middleware.GZip(middleware.GZipWithMaxDecompressedSize(limit))(zap.NewNop(), "test",
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body, readErr := io.ReadAll(r.Body)
+				assert.NoError(t, readErr)
+				assert.Equal(t, payload, string(body))
+			}),
+		)
+	}
+
+	t.Run("exceeds limit", func(t *testing.T) {
+		t.Parallel()
+
+		r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewReader(compressed))
+		r.Header.Set(stdhttp.HeaderContentEncoding.String(), stdhttp.EncodingGzip.String())
+
+		w := httptest.NewRecorder()
+		middleware.GZip(middleware.GZipWithMaxDecompressedSize(1024))(zap.NewNop(), "test",
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				t.Error("handler must not be reached when limit is exceeded")
+			}),
+		).ServeHTTP(w, r)
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+	})
+
+	t.Run("within limit", func(t *testing.T) {
+		t.Parallel()
+
+		r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewReader(compressed))
+		r.Header.Set(stdhttp.HeaderContentEncoding.String(), stdhttp.EncodingGzip.String())
+
+		w := httptest.NewRecorder()
+		newHandler(200*1024).ServeHTTP(w, r)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
 }
 
 func gzipString(body string) ([]byte, error) {

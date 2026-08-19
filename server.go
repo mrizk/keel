@@ -149,6 +149,7 @@ func NewServer(opts ...Option) *Server {
 
 	// add probe
 	inst.AddAlwaysHealthzers(inst)
+	//nolint:staticcheck //SA1019
 	inst.AddReadmers(
 		interfaces.ReadmeFunc(env.Readme),
 		interfaces.ReadmeFunc(config.Readme),
@@ -251,11 +252,15 @@ func (s *Server) AddClosers(closers ...any) {
 }
 
 // AddReadmer adds a readmer to be added to the exposed readme
+//
+// Deprecated: will be removed in future releases
 func (s *Server) AddReadmer(readmer interfaces.Readmer) {
 	s.addReadmers(readmer)
 }
 
 // AddReadmers adds readmers to be added to the exposed readme
+//
+// Deprecated: will be removed in future releases
 func (s *Server) AddReadmers(readmers ...interfaces.Readmer) {
 	for _, readmer := range readmers {
 		s.AddReadmer(readmer)

@@ -23,7 +23,7 @@ func MeterProvider() metric.MeterProvider {
 	return otel.GetMeterProvider()
 }
 
-// NewNoopMeterProvider returns a no-op metric.MeterProvider and sets it as the global MeterProvider.
+// NewNoopMeterProvider returns a no-op metric.MeterProvider.
 func NewNoopMeterProvider() metric.MeterProvider {
 	return noop.NewMeterProvider()
 }
@@ -36,7 +36,7 @@ func NewStdOutMeterProvider(ctx context.Context, opts ...stdoutmetric.Option) (m
 		opts = append(opts, stdoutmetric.WithEncoder(enc))
 	}
 
-	if !env.GetBool("OTEL_EXPORTER_STDOUT_TIMESTAMP", true) {
+	if !env.GetBool("OTEL_EXPORTER_STDOUT_TIMESTAMPS", true) {
 		opts = append(opts, stdoutmetric.WithoutTimestamps())
 	}
 

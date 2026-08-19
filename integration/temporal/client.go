@@ -25,6 +25,7 @@ type (
 		Namespace         string
 		RegisterNamespace *workflowservice.RegisterNamespaceRequest
 		OtelEnabled       bool
+		ConnectionOptions client.ConnectionOptions
 	}
 	ClientOption func(o *ClientOptions)
 )
@@ -47,12 +48,19 @@ func ClientWithRegisterNamespace(v *workflowservice.RegisterNamespaceRequest) Cl
 	}
 }
 
+func ClientWithConnectionOptions(v client.ConnectionOptions) ClientOption {
+	return func(o *ClientOptions) {
+		o.ConnectionOptions = v
+	}
+}
+
 func DefaultClientOptions() ClientOptions {
 	return ClientOptions{
 		Logger:            log.Logger(),
 		Namespace:         "default",
 		RegisterNamespace: nil,
 		OtelEnabled:       env.GetBool("OTEL_TEMPORAL_ENABLED", env.GetBool("OTEL_ENABLED", false)),
+		ConnectionOptions: client.ConnectionOptions{},
 	}
 }
 
@@ -65,9 +73,10 @@ func NewClient(ctx context.Context, endpoint string, opts ...ClientOption) (clie
 	}
 
 	clientOpts := client.Options{
-		HostPort:  endpoint,
-		Namespace: o.Namespace,
-		Logger:    NewLogger(o.Logger),
+		HostPort:          endpoint,
+		Namespace:         o.Namespace,
+		Logger:            NewLogger(o.Logger),
+		ConnectionOptions: o.ConnectionOptions,
 	}
 
 	nsc, err := client.NewNamespaceClient(clientOpts)
@@ -88,8 +97,8 @@ func NewClient(ctx context.Context, endpoint string, opts ...ClientOption) (clie
 			return nil, errors.Wrap(err, "failed to retrieve temporal namespace info")
 		}
 
-		if ns.GetNamespaceInfo().State != enums.NAMESPACE_STATE_REGISTERED { //nolint:nosnakecase
-			return nil, errors.New("Could not register namespace due to existing state: " + ns.GetNamespaceInfo().State.String())
+		if ns.GetNamespaceInfo().GetState() != enums.NAMESPACE_STATE_REGISTERED { //nolint:nosnakecase
+			return nil, errors.New("Could not register namespace due to existing state: " + ns.GetNamespaceInfo().GetState().String())
 		}
 
 		if err := nsc.Update(ctx, &workflowservice.UpdateNamespaceRequest{
@@ -98,11 +107,11 @@ func NewClient(ctx context.Context, endpoint string, opts ...ClientOption) (clie
 				Description: o.RegisterNamespace.Description,
 				OwnerEmail:  o.RegisterNamespace.OwnerEmail,
 				Data:        o.RegisterNamespace.Data,
-				State:       ns.GetNamespaceInfo().State,
+				State:       ns.GetNamespaceInfo().GetState(),
 			},
 			Config: &namespace.NamespaceConfig{
 				WorkflowExecutionRetentionTtl: o.RegisterNamespace.WorkflowExecutionRetentionPeriod,
-				BadBinaries:                   ns.Config.BadBinaries,
+				BadBinaries:                   ns.GetConfig().GetBadBinaries(),
 				HistoryArchivalState:          o.RegisterNamespace.HistoryArchivalState,
 				HistoryArchivalUri:            o.RegisterNamespace.HistoryArchivalUri,
 				VisibilityArchivalState:       o.RegisterNamespace.VisibilityArchivalState,
@@ -111,13 +120,13 @@ func NewClient(ctx context.Context, endpoint string, opts ...ClientOption) (clie
 			ReplicationConfig: &replication.NamespaceReplicationConfig{
 				ActiveClusterName: o.RegisterNamespace.ActiveClusterName,
 				Clusters:          o.RegisterNamespace.Clusters,
-				State:             ns.ReplicationConfig.State,
+				State:             ns.GetReplicationConfig().GetState(),
 			},
 			SecurityToken:    o.RegisterNamespace.SecurityToken,
 			DeleteBadBinary:  "",
 			PromoteNamespace: false,
 		}); err != nil {
-			return nil, errors.Wrap(err, "failed to register temporal namespace")
+			return nil, errors.Wrap(err, "failed to update temporal namespace")
 		}
 
 		clientOpts.Namespace = o.RegisterNamespace.Namespace
