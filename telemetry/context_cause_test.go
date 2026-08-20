@@ -13,23 +13,23 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
-type selfCauser struct{ msg string }
+type selfCauseError struct{ msg string }
 
-func (e *selfCauser) Error() string { return e.msg }
-func (e *selfCauser) Cause() error  { return e }
+func (e *selfCauseError) Error() string { return e.msg }
+func (e *selfCauseError) Cause() error  { return e }
 
-type cycleCauser struct {
+type cycleCauseError struct {
 	msg  string
 	next error
 }
 
-func (e *cycleCauser) Error() string { return e.msg }
-func (e *cycleCauser) Cause() error  { return e.next }
+func (e *cycleCauseError) Error() string { return e.msg }
+func (e *cycleCauseError) Cause() error  { return e.next }
 
-type nilCauser struct{ msg string }
+type nilCauseError struct{ msg string }
 
-func (e *nilCauser) Error() string { return e.msg }
-func (e *nilCauser) Cause() error  { return nil }
+func (e *nilCauseError) Error() string { return e.msg }
+func (e *nilCauseError) Cause() error  { return nil }
 
 func mustTerminate(t *testing.T, name string, fn func()) {
 	t.Helper()
@@ -38,6 +38,7 @@ func mustTerminate(t *testing.T, name string, fn func()) {
 
 	go func() {
 		defer close(done)
+
 		fn()
 	}()
 
@@ -54,21 +55,21 @@ func TestRootCause(t *testing.T) {
 	t.Run("self referential chain terminates", func(t *testing.T) {
 		t.Parallel()
 
-		err := &selfCauser{msg: "rpc failed"}
+		err := &selfCauseError{msg: "rpc failed"}
 
 		var got error
 
 		mustTerminate(t, "RootCause", func() { got = telemetry.RootCause(err) })
 
-		require.NotNil(t, got)
+		require.Error(t, got)
 		assert.Equal(t, "rpc failed", got.Error())
 	})
 
 	t.Run("two node cycle terminates", func(t *testing.T) {
 		t.Parallel()
 
-		a := &cycleCauser{msg: "a"}
-		b := &cycleCauser{msg: "b"}
+		a := &cycleCauseError{msg: "a"}
+		b := &cycleCauseError{msg: "b"}
 		a.next, b.next = b, a
 
 		mustTerminate(t, "RootCause", func() { _ = telemetry.RootCause(a) })
@@ -86,14 +87,14 @@ func TestRootCause(t *testing.T) {
 	t.Run("never returns nil for a non nil error", func(t *testing.T) {
 		t.Parallel()
 
-		err := &nilCauser{msg: "no cause"}
+		err := &nilCauseError{msg: "no cause"}
 
 		// pkg/errors.Cause returns nil here, so callers doing
 		// Cause(err).Error() panic. RootCause returns the last non-nil error.
-		require.Nil(t, pkgerrors.Cause(err)) //nolint:testifylint
+		require.NoError(t, pkgerrors.Cause(err))
 
 		got := telemetry.RootCause(err)
-		require.NotNil(t, got)
+		require.Error(t, got)
 		assert.Equal(t, "no cause", got.Error())
 	})
 }
@@ -104,10 +105,13 @@ func TestEndSpanWithSelfReferentialCause(t *testing.T) {
 	spanRecorder := tracetest.NewSpanRecorder()
 	tracerProvider := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(spanRecorder))
 
-	ctx, _ := tracerProvider.Tracer("test").Start(t.Context(), "test")
+	ctx, span := tracerProvider.Tracer("test").Start(t.Context(), "test")
+	// EndSpan is what ends the span below; this is a no-op safety net so the
+	// span cannot leak if EndSpan itself fails to terminate.
+	defer span.End()
 
 	mustTerminate(t, "EndSpan", func() {
-		telemetry.Ctx(ctx).EndSpan(&selfCauser{msg: "rpc failed"})
+		telemetry.Ctx(ctx).EndSpan(&selfCauseError{msg: "rpc failed"})
 	})
 
 	spans := spanRecorder.Ended()

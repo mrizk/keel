@@ -250,16 +250,20 @@ func rootCause(err error) error {
 	type causer interface {
 		Cause() error
 	}
-	for i := 0; i < maxCauseDepth; i++ {
+
+	for range maxCauseDepth {
 		cause, ok := err.(causer)
 		if !ok {
 			return err
 		}
+
 		next := cause.Cause()
 		if next == nil {
 			return err
 		}
+
 		err = next
 	}
+
 	return err
 }
